@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elden Ring Build Generator 2.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Libre+Franklin:wght@400;500;600&display=swap">
+<style>
+/* Макет: одна колонка ~880px, как у оригинала — полупрозрачные панели с тонкой светлой рамкой над тёмным фоном с золотым свечением Древа */
+:root {
+  --bg: #0e0d0b;
+  --panel: rgba(8, 7, 6, 0.62);
+  --line: rgba(233, 222, 196, 0.55);
+  --line-soft: rgba(233, 222, 196, 0.18);
+  --fg: #eee7d5;
+  --muted: #a89f8a;
+  --gold: #d2b064;
+  --t1: #9cc47c;
+  --t2: #dcb65c;
+  --t3: #d07e5f;
+  --blood: #d05a4f;
+  --frost: #8cc4df;
+  --poison: #a9c25a;
+  --display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --body: "Libre Franklin", "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 45% at 50% -8%, rgba(210, 176, 100, 0.28), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 85% 110%, rgba(208, 90, 79, 0.10), transparent 70%);
+  background-attachment: fixed;
+  color: var(--fg);
+  font: 15px/1.5 var(--body);
+  letter-spacing: 0.02em;
+  min-height: 100%;
+}
+.wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 48px; display: flex; flex-direction: column; gap: 10px; }
+.panel { background: var(--panel); border: 1px solid var(--line); padding: 18px 20px; min-width: 0; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; margin: 0; text-wrap: balance; }
+a { color: inherit; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Шапка с кубиком */
+header.panel { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+header h1 { font-size: clamp(1.25rem, 3.6vw, 1.9rem); letter-spacing: 0.04em; line-height: 1.2; }
+header h1 small { display: block; font-family: var(--body); font-weight: 500; font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-top: 4px; }
+#roll { background: none; border: 0; color: var(--fg); cursor: pointer; padding: 4px; flex: none; }
+#roll svg { width: 72px; height: 72px; display: block; transition: transform .5s cubic-bezier(.3,1.6,.5,1); }
+#roll:hover svg { color: var(--gold); }
+#roll.spin svg { transform: rotate(360deg); }
+
+/* Настройки */
+.controls { display: grid; gap: 14px; }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); }
+.seg button { background: transparent; color: var(--fg); border: 0; border-left: 1px solid var(--line-soft); padding: 9px 4px; font: 600 0.85rem var(--body); letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
+.seg button:first-child { border-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--gold); color: #1a150b; }
+.rule { color: var(--muted); font-size: 0.9rem; margin: 0; min-height: 2.9em; }
+.row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.toggle { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; font-size: 0.9rem; }
+.toggle input { accent-color: var(--gold); width: 16px; height: 16px; }
+.seed { display: inline-flex; gap: 6px; align-items: center; font-size: 0.85rem; color: var(--muted); margin-left: auto; }
+.seed input { width: 8.5em; background: transparent; color: var(--fg); border: 1px solid var(--line-soft); padding: 5px 8px; font: 600 0.9rem ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+.btn { background: transparent; color: var(--fg); border: 1px solid var(--line); padding: 5px 10px; font: 500 0.82rem var(--body); cursor: pointer; letter-spacing: 0.04em; }
+.btn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* Карточка билда */
+.eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); margin: 0 0 6px; }
+.build h2 { font-size: clamp(1.6rem, 5vw, 2.4rem); line-height: 1.12; letter-spacing: 0.02em; }
+.aka { color: var(--muted); font-style: italic; margin: 4px 0 0; }
+.tagline { margin: 12px 0 0; max-width: 64ch; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px 24px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.facts dt { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 3px 0 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px; }
+.stat { border: 1px solid var(--line-soft); padding: 1px 7px; font: 600 0.8rem ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.06em; }
+.stat.main { border-color: var(--gold); color: var(--gold); }
+.stat.ban { color: var(--blood); border-color: rgba(208, 90, 79, .5); text-decoration: line-through; }
+.stat.note { font-family: var(--body); font-weight: 500; color: var(--muted); }
+
+/* Пассивки */
+.panel > h3 { font-size: 1.05rem; letter-spacing: 0.06em; margin-bottom: 10px; }
+ol.passives { margin: 0; padding-left: 1.4em; display: grid; gap: 8px; font-size: 1.05rem; }
+ol.passives li::marker { color: var(--gold); font-family: var(--display); }
+.why { display: block; color: var(--muted); font-size: 0.84rem; }
+
+/* Руки */
+.hands { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 640px) { .hands { grid-template-columns: 1fr; } .seed { margin-left: 0; } }
+.hand .role { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.hand h4 { font-family: var(--display); font-size: 1.3rem; margin: 2px 0 0; line-height: 1.2; }
+.hand .en { color: var(--muted); font-size: 0.85rem; }
+.hand p.desc { margin: 8px 0 0; color: var(--muted); font-size: 0.9rem; }
+ul.items { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+ul.items li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+ul.items a { text-decoration: none; border-bottom: 1px solid var(--line-soft); }
+ul.items a:hover { color: var(--gold); border-color: var(--gold); }
+.tier { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 0 5px; border: 1px solid currentColor; flex: none; min-width: 4.6em; text-align: center; }
+.tier.t1 { color: var(--t1); } .tier.t2 { color: var(--t2); } .tier.t3 { color: var(--t3); }
+.st { font-size: 0.78rem; color: var(--muted); }
+.st.bleed { color: var(--blood); } .st.frost { color: var(--frost); } .st.poison { color: var(--poison); }
+.hint { margin: 10px 0 0; font-size: 0.84rem; color: var(--muted); border-left: 2px solid var(--line-soft); padding-left: 8px; }
+
+/* Магия */
+.schools { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px 24px; }
+.school h4 { font-family: var(--display); font-size: 1.05rem; margin: 0; }
+.school .when { font-size: 0.78rem; color: var(--muted); }
+
+.guide { color: var(--muted); font-size: 0.88rem; }
+.guide p { margin: 0 0 8px; max-width: 72ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--gold); color: #1a150b; padding: 7px 14px; font-weight: 600; font-size: 0.85rem; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { #roll svg { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="panel">
+    <h1>Elden Ring — генератор билдов 2.0</h1>
+    <button id="roll" aria-label="Сгенерировать билд" title="Бросить кубик">
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">
+        <rect x="6" y="6" width="52" height="52" rx="9" fill="rgba(0,0,0,.25)"/>
+        <g fill="currentColor" stroke="none">
+          <circle cx="20" cy="19" r="4.2"/><circle cx="44" cy="19" r="4.2"/>
+          <circle cx="20" cy="32" r="4.2"/><circle cx="44" cy="32" r="4.2"/>
+          <circle cx="20" cy="45" r="4.2"/><circle cx="44" cy="45" r="4.2"/>
+        </g>
+      </svg>
+    </button>
+  </header>
+
+  <section class="panel controls" aria-label="Настройки">
+    <div class="seg" role="group" aria-label="Сложность" id="diff">
+      <button type="button" data-d="0">Лёгкий</button>
+      <button type="button" data-d="1">Средний</button>
+      <button type="button" data-d="2">Сложный</button>
+      <button type="button" data-d="3">Эксперт</button>
+    </div>
+    <p class="rule" id="rule"></p>
+    <div class="row">
+      <label class="toggle"><input type="checkbox" id="coop" checked> Играем в коопе (чаще лекари и саппорты)</label>
+      <form class="seed" id="seedForm">
+        <label for="seed">Сид</label>
+        <input id="seed" maxlength="10" spellcheck="false" autocomplete="off">
+        <button class="btn" type="submit">Собрать</button>
+        <button class="btn" type="button" id="copy">Копировать билд</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="panel build" id="build"></section>
+  <section class="panel" id="passives"></section>
+  <div class="hands" id="hands"></div>
+  <section class="panel" id="magic"></section>
+
+  <section class="panel guide">
+    <p>Пассивки действуют всю игру. Всё, что выпало, согласовано: запрет на стат убирает оружие с высоким требованием этого стата, лёгкий перекат убирает огромное оружие и большие щиты, обязательный статус выдаётся только тем классам, у которых такое оружие есть уже в начале или середине игры. Название билда подбирается уже после броска, по тому, что выпало.</p>
+    <p>Если стартовый класс не даёт нужного оружия, возьмите любое доступное из списка. Сид сохраняет билд: скиньте его напарнику, он получит тот же результат при той же сложности.</p>
+    <div class="legend"><span class="tier t1">рано</span> Лимгрейв, Полуостров, Грозовая завеса, начало Лиурнии <span class="tier t2">середина</span> Лиурния, Келид, Сиофра, Альтус, Гельмир <span class="tier t3">поздно</span> Лейнделл и дальше</div>
+    <p style="margin-top:8px">Этапы примерные, без DLC. Названия ведут на вики Fextralife, где указано точное место.</p>
+  </section>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+// ===== Данные =====
+// Формат примеров: "Имя:этап(1-3):статы через /:метка", метка — статус или школа магии
+const parse = str => str.split(';').map(x => x.trim()).filter(Boolean).map(x => {
+  const [n, t, st, x4] = x.split(':');
+  return { n, t: +t, st: st ? st.split('/') : [], x: x4 || null };
+});
+
+const W = {
+  dagger:      { en: 'Daggers', ru: 'Кинжалы', kind: 'melee', size: 'S', req: { STR: 0, DEX: 1 }, aff: { STR: 1, DEX: 2.5 }, noun: 'Убийца',
+    ex: `Dagger:1:STR/DEX; Great Knife:1:DEX:bleed; Reduvia:1:DEX/ARC:bleed; Celebrant's Sickle:1:DEX; Misericorde:2:DEX; Parrying Dagger:2:DEX; Bloodstained Dagger:2:DEX:bleed; Glintstone Kris:2:INT; Crystal Knife:2:INT; Ivory Sickle:2:INT; Black Knife:3:DEX/FAI; Blade of Calling:3:FAI` },
+  straight:    { en: 'Straight Swords', ru: 'Прямые мечи', kind: 'melee', size: 'M', req: { STR: 1, DEX: 1 }, aff: { STR: 2, DEX: 2 }, noun: 'Рыцарь',
+    ex: `Longsword:1:STR/DEX; Broadsword:1:STR; Lordsworn's Straight Sword:1:STR/DEX; Noble's Slender Sword:1:DEX; Cane Sword:2:DEX; Carian Knight's Sword:2:INT; Crystal Sword:2:INT; Lazuli Glintstone Sword:2:INT; Sword of Night and Flame:2:INT/FAI; Coded Sword:3:FAI; Golden Epitaph:3:FAI; Miquellan Knight's Sword:3:FAI; Ornamental Straight Sword:3:DEX` },
+  greatsword:  { en: 'Greatswords', ru: 'Большие мечи', kind: 'melee', size: 'L', req: { STR: 2, DEX: 1 }, aff: { STR: 3, DEX: 1.5 }, noun: 'Мечник',
+    ex: `Bastard Sword:1:STR; Claymore:1:STR/DEX; Lordsworn's Greatsword:1:STR; Flamberge:2:DEX:bleed; Knight's Greatsword:2:STR; Iron Greatsword:2:STR; Banished Knight's Greatsword:2:STR; Gargoyle's Greatsword:2:STR; Blasphemous Blade:2:FAI; Sacred Relic Sword:3:FAI; Golden Order Greatsword:3:FAI; Ordovis's Greatsword:3:FAI; Dark Moon Greatsword:3:INT:frost; Helphen's Steeple:3:INT` },
+  colSword:    { en: 'Colossal Swords', ru: 'Огромные мечи', kind: 'melee', size: 'XL', req: { STR: 3, DEX: 1 }, aff: { STR: 3, DEX: 1 }, noun: 'Двуручник',
+    ex: `Zweihander:1:STR/DEX; Grafted Blade Greatsword:1:STR; Greatsword:2:STR; Watchdog's Greatsword:2:STR; Troll Knight's Sword:2:STR/INT; Starscourge Greatsword:2:STR/INT; Ruins Greatsword:2:STR/INT; Godslayer's Greatsword:2:STR/FAI; Royal Greatsword:3:INT:frost; Maliketh's Black Blade:3:FAI` },
+  thrust:      { en: 'Thrusting Swords', ru: 'Колющие мечи', kind: 'melee', size: 'M', req: { STR: 0, DEX: 2 }, aff: { STR: 0.5, DEX: 3 }, noun: 'Дуэлянт',
+    ex: `Estoc:1:DEX; Rapier:1:DEX; Noble's Estoc:2:DEX; Rogier's Rapier:2:DEX; Antspur Rapier:3:DEX:rot; Frozen Needle:3:DEX:frost` },
+  heavyThrust: { en: 'Heavy Thrusting Swords', ru: 'Тяжёлые колющие мечи', kind: 'melee', size: 'L', req: { STR: 1, DEX: 2 }, aff: { STR: 1, DEX: 3 }, noun: 'Фехтовальщик',
+    ex: `Great Épée:2:STR/DEX; Godskin Stitcher:2:DEX; Bloody Helice:2:DEX/ARC:bleed; Dragon King's Cragblade:3:DEX` },
+  curved:      { en: 'Curved Swords', ru: 'Изогнутые мечи', kind: 'melee', size: 'M', req: { STR: 0, DEX: 2 }, aff: { STR: 1, DEX: 3 }, noun: 'Налётчик',
+    ex: `Scimitar:1:DEX; Falchion:1:DEX; Scavenger's Curved Sword:1:DEX:bleed; Beastman's Curved Sword:1:STR/DEX; Grossmesser:2:STR/DEX; Shamshir:2:DEX; Bandit's Curved Sword:2:DEX:bleed; Shotel:2:DEX; Mantis Blade:2:DEX; Flowing Curved Sword:2:DEX; Wing of Astel:2:INT; Serpent-God's Curved Sword:2:DEX:bleed; Eclipse Shotel:3:FAI` },
+  curvedGreat: { en: 'Curved Greatswords', ru: 'Большие изогнутые мечи', kind: 'melee', size: 'L', req: { STR: 2, DEX: 2 }, aff: { STR: 2.5, DEX: 2 }, noun: 'Мясник',
+    ex: `Bloodhound's Fang:1:STR/DEX:bleed; Dismounter:2:STR; Omen Cleaver:2:STR; Monk's Flameblade:2:STR; Beastman's Cleaver:2:STR; Magma Wyrm's Scalesword:2:STR/FAI; Onyx Lord's Greatsword:3:INT; Morgott's Cursed Sword:3:DEX/ARC:bleed; Zamor Curved Sword:3:DEX` },
+  katana:      { en: 'Katanas', ru: 'Катаны', kind: 'melee', size: 'M', req: { STR: 1, DEX: 2 }, aff: { STR: 1, DEX: 3 }, noun: 'Самурай',
+    ex: `Uchigatana:1:DEX:bleed; Nagakiba:1:DEX:bleed; Moonveil:2:DEX/INT:bleed; Meteoric Ore Blade:2:INT; Serpentbone Blade:2:DEX:poison; Rivers of Blood:3:DEX/ARC:bleed; Dragonscale Blade:3:DEX:frost; Hand of Malenia:3:DEX:bleed` },
+  twinblade:   { en: 'Twinblades', ru: 'Двойные клинки', kind: 'melee', size: 'L', req: { STR: 1, DEX: 2 }, aff: { STR: 1.5, DEX: 2.5 }, noun: 'Танцор клинков',
+    ex: `Twinblade:2:STR/DEX; Twinned Knight Swords:2:STR/DEX; Gargoyle's Twinblade:2:STR/DEX; Eleonora's Poleblade:2:DEX/ARC:bleed; Godskin Peeler:2:DEX/FAI; Gargoyle's Black Blades:3:FAI` },
+  axe:         { en: 'Axes', ru: 'Топоры', kind: 'melee', size: 'M', req: { STR: 1, DEX: 0 }, aff: { STR: 3, DEX: 1 }, noun: 'Рубака',
+    ex: `Hand Axe:1:STR; Battle Axe:1:STR; Forked Hatchet:2:STR/DEX:bleed; Jawbone Axe:2:STR; Warped Axe:2:STR; Iron Cleaver:2:STR; Sacrificial Axe:2:STR; Celebrant's Cleaver:2:STR; Icerind Hatchet:2:DEX:frost; Ripple Blade:2:ARC; Rosus' Axe:3:INT; Stormhawk Axe:3:STR` },
+  greataxe:    { en: 'Greataxes', ru: 'Большие топоры', kind: 'melee', size: 'L', req: { STR: 3, DEX: 0 }, aff: { STR: 3, DEX: 0.5 }, noun: 'Берсерк',
+    ex: `Axe of Godrick:1:STR; Greataxe:2:STR; Rusted Anchor:2:STR; Executioner's Greataxe:2:STR; Crescent Moon Axe:2:STR; Great Omenkiller Cleaver:2:STR; Butchering Knife:2:STR:bleed; Gargoyle's Great Axe:2:STR; Longhaft Axe:2:STR; Winged Greathorn:3:FAI` },
+  hammer:      { en: 'Hammers', ru: 'Молоты', kind: 'melee', size: 'M', req: { STR: 2, DEX: 0 }, aff: { STR: 3, DEX: 1 }, noun: 'Костолом',
+    ex: `Club:1:STR; Mace:1:STR; Morning Star:1:STR:bleed; Warpick:1:STR/DEX; Hammer:1:STR; Spiked Club:2:STR:bleed; Stone Club:2:STR; Nox Flowing Hammer:2:STR/DEX; Monk's Flamemace:2:STR; Varre's Bouquet:2:ARC:bleed; Envoy's Horn:3:FAI; Scepter of the All-Knowing:3:INT/FAI; Marika's Hammer:3:FAI` },
+  flail:       { en: 'Flails', ru: 'Кистени', kind: 'melee', size: 'M', req: { STR: 1, DEX: 1 }, aff: { STR: 2, DEX: 2 }, noun: 'Кистенщик',
+    ex: `Flail:1:STR/DEX; Nightrider Flail:1:STR/DEX; Chainlink Flail:2:STR; Bastard's Stars:2:INT` },
+  greatHammer: { en: 'Great Hammers', ru: 'Большие молоты', kind: 'melee', size: 'L', req: { STR: 3, DEX: 0 }, aff: { STR: 3, DEX: 0.3 }, noun: 'Дубинщик',
+    ex: `Large Club:1:STR; Great Mace:1:STR; Battle Hammer:1:STR; Curved Great Club:2:STR; Pickaxe:2:STR; Brick Hammer:2:STR; Celebrant's Skull:2:STR; Great Stars:2:STR:bleed; Beastclaw Greathammer:2:STR/FAI:bleed; Greathorn Hammer:2:STR; Devourer's Scepter:3:FAI` },
+  colossal:    { en: 'Colossal Weapons', ru: 'Огромное оружие', kind: 'melee', size: 'XL', req: { STR: 3, DEX: 0 }, aff: { STR: 3, DEX: 0.3 }, noun: 'Громила',
+    ex: `Great Club:1:STR; Duelist Greataxe:2:STR; Giant-Crusher:2:STR; Prelate's Inferno Crozier:2:STR; Watchdog's Staff:2:STR/INT; Troll's Hammer:2:STR; Golem's Halberd:2:STR; Fallingstar Beast Jaw:2:STR/INT; Ghiza's Wheel:3:STR:bleed; Envoy's Greathorn:3:FAI; Staff of the Avatar:3:FAI; Axe of Godfrey:3:STR; Dragon Greatclaw:3:STR` },
+  spear:       { en: 'Spears', ru: 'Копья', kind: 'melee', size: 'M', req: { STR: 1, DEX: 1 }, aff: { STR: 2, DEX: 2 }, noun: 'Копейщик',
+    ex: `Short Spear:1:STR/DEX; Spear:1:STR/DEX; Iron Spear:1:STR; Partisan:1:STR/DEX; Torchpole:1:STR/DEX; Pike:2:STR/DEX; Cross-Naginata:2:DEX:bleed; Spiked Spear:2:DEX:bleed; Celebrant's Rib-Rake:2:DEX; Clayman's Harpoon:2:INT; Crystal Spear:2:INT; Inquisitor's Girandole:2:FAI; Death Ritual Spear:3:INT; Bolt of Gransax:3:FAI` },
+  greatSpear:  { en: 'Great Spears', ru: 'Большие копья', kind: 'melee', size: 'L', req: { STR: 2, DEX: 1 }, aff: { STR: 3, DEX: 2 }, noun: 'Улан',
+    ex: `Lance:1:STR/DEX; Treespear:2:FAI; Serpent-Hunter:2:STR/DEX; Siluria's Tree:3:FAI; Mohgwyn's Sacred Spear:3:ARC:bleed; Vyke's War Spear:3:STR/DEX:madness` },
+  halberd:     { en: 'Halberds', ru: 'Алебарды', kind: 'melee', size: 'L', req: { STR: 2, DEX: 1 }, aff: { STR: 2.5, DEX: 2 }, noun: 'Алебардист',
+    ex: `Halberd:1:STR/DEX; Banished Knight's Halberd:1:STR; Nightrider Glaive:1:STR/DEX; Golden Halberd:1:STR/FAI; Lucerne:2:STR/DEX; Glaive:2:STR; Guardian's Swordspear:2:DEX; Gargoyle's Halberd:2:STR; Vulgar Militia Saw:2:DEX:bleed; Ripple Crescent Halberd:2:ARC; Loretta's War Sickle:3:INT; Dragon Halberd:3:STR/DEX; Commander's Standard:3:STR; Gargoyle's Black Halberd:3:FAI` },
+  reaper:      { en: 'Reapers', ru: 'Косы', kind: 'melee', size: 'L', req: { STR: 1, DEX: 2 }, aff: { STR: 1, DEX: 3 }, noun: 'Жнец',
+    ex: `Winged Scythe:1:DEX/FAI:bleed; Scythe:2:DEX:bleed; Grave Scythe:2:DEX:bleed; Halo Scythe:2:DEX/FAI:bleed` },
+  whip:        { en: 'Whips', ru: 'Кнуты', kind: 'melee', size: 'M', req: { STR: 0, DEX: 2 }, aff: { STR: 0.5, DEX: 3 }, noun: 'Хлыстарь',
+    ex: `Whip:1:DEX; Urumi:2:DEX:bleed; Thorned Whip:2:DEX:bleed; Hoslow's Petal Whip:2:DEX:bleed; Magma Whip Candlestick:2:FAI; Giant's Red Braid:3:FAI` },
+  fist:        { en: 'Fists', ru: 'Кастеты', kind: 'melee', size: 'S', req: { STR: 1, DEX: 1 }, aff: { STR: 2, DEX: 2 }, noun: 'Кулачный боец',
+    ex: `Caestus:1:STR/DEX; Spiked Caestus:1:STR/DEX:bleed; Grafted Dragon:1:STR; Katar:2:DEX; Iron Ball:2:STR; Star Fist:2:STR; Clinging Bone:2:DEX/ARC:bleed; Veteran's Prosthesis:3:STR/DEX; Cipher Pata:3:FAI` },
+  claw:        { en: 'Claws', ru: 'Когти', kind: 'melee', size: 'S', req: { STR: 0, DEX: 2 }, aff: { STR: 0.5, DEX: 3 }, noun: 'Потрошитель',
+    ex: `Hookclaws:1:DEX:bleed; Venomous Fang:2:DEX:poison; Raptor Talons:2:DEX:bleed; Bloodhound Claws:3:DEX:bleed` },
+
+  lbow:  { en: 'Light Bows', ru: 'Лёгкие луки', kind: 'bow', size: 'S', req: { STR: 0, DEX: 2 }, aff: { STR: 0, DEX: 3 }, noun: 'Лучник',
+    ex: `Shortbow:1:DEX; Composite Bow:1:DEX; Misbegotten Shortbow:2:DEX; Red Branch Shortbow:2:DEX; Harp Bow:2:DEX` },
+  bow:   { en: 'Bows', ru: 'Луки', kind: 'bow', size: 'M', req: { STR: 0, DEX: 2 }, aff: { STR: 0.5, DEX: 3 }, noun: 'Лучник',
+    ex: `Longbow:1:DEX; Black Bow:2:DEX; Pulley Bow:2:DEX; Albinauric Bow:2:DEX/ARC; Horn Bow:2:DEX/INT; Serpent Bow:2:DEX/ARC; Erdtree Bow:3:DEX/FAI` },
+  gbow:  { en: 'Greatbows', ru: 'Большие луки', kind: 'bow', size: 'L', req: { STR: 3, DEX: 2 }, aff: { STR: 3, DEX: 1.5 }, noun: 'Осадный стрелок',
+    ex: `Greatbow:2:STR/DEX; Golem Greatbow:2:STR/DEX; Lion Greatbow:3:STR/DEX; Erdtree Greatbow:3:STR/DEX` },
+  xbow:  { en: 'Crossbows & Ballistae', ru: 'Арбалеты', kind: 'bow', size: 'M', req: { STR: 1, DEX: 0 }, aff: { STR: 1.5, DEX: 1.5 }, noun: 'Арбалетчик',
+    ex: `Soldier's Crossbow:1:; Light Crossbow:1:; Heavy Crossbow:2:; Arbalest:2:; Pulley Crossbow:2:; Hand Ballista:2:; Full Moon Crossbow:3:` },
+
+  staff: { en: 'Glintstone Staffs', ru: 'Посохи', kind: 'staff', stat: 'INT', size: 'S', req: {}, aff: {},
+    ex: `Astrologer's Staff:1:INT; Demi-Human Queen's Staff:1:INT; Meteorite Staff:2:INT:gravity; Academy Glintstone Staff:2:INT; Carian Glintstone Staff:2:INT:carian; Crystal Staff:2:INT:crystal; Gelmir Glintstone Staff:2:INT:magma; Staff of Loss:2:INT:night; Albinauric Staff:2:INT/ARC; Prince of Death's Staff:3:INT/FAI; Azur's Glintstone Staff:3:INT:primeval; Lusat's Glintstone Staff:3:INT:primeval; Carian Regal Scepter:3:INT:carian` },
+  seal:  { en: 'Sacred Seals', ru: 'Священные печати', kind: 'seal', stat: 'FAI', size: 'S', req: {}, aff: {},
+    ex: `Finger Seal:1:FAI; Clawmark Seal:2:STR/FAI:bestial; Godslayer's Seal:2:FAI:black; Gravel Stone Seal:2:FAI:lightning; Dragon Communion Seal:2:FAI/ARC:dragon; Giant's Seal:3:FAI:giants; Golden Order Seal:3:INT/FAI; Erdtree Seal:3:FAI; Frenzied Flame Seal:3:INT/FAI:frenzy` },
+  torch: { en: 'Torches', ru: 'Факелы', kind: 'torch', size: 'S', req: { STR: 1, DEX: 1 }, aff: {},
+    ex: `Torch:1:STR/DEX; Steel-Wire Torch:2:STR/DEX; Beast-Repellent Torch:2:STR/DEX; Ghostflame Torch:2:INT; Sentry's Torch:3:FAI` },
+  shieldS: { en: 'Small Shields', ru: 'Малые щиты', kind: 'shield', size: 'S', req: { STR: 1 }, aff: {},
+    ex: `Buckler:1:; Rift Shield:1:; Scripture Wooden Shield:1:; Coil Shield:2:; Shield of the Guilty:2:` },
+  shieldM: { en: 'Medium Shields', ru: 'Средние щиты', kind: 'shield', size: 'M', req: { STR: 1 }, aff: {},
+    ex: `Brass Shield:1:; Heater Shield:1:; Banished Knight's Shield:2:; Great Turtle Shell:2:; Carian Knight's Shield:2:INT; Silver Mirrorshield:2:` },
+  shieldG: { en: 'Greatshields', ru: 'Большие щиты', kind: 'shield', size: 'XL', req: { STR: 2 }, aff: {},
+    ex: `Wooden Greatshield:1:; Gilded Greatshield:2:; Dragon Towershield:2:; Redmane Greatshield:2:; Crucible Hornshield:3:; Haligtree Crest Greatshield:3:; Fingerprint Stone Shield:3:` },
+};
+for (const k in W) W[k].ex = parse(W[k].ex);
+const MELEE = Object.keys(W).filter(k => W[k].kind === 'melee');
+const BOWS = ['lbow', 'bow', 'gbow', 'xbow'];
+
+// Школы магии: stat — чем кастуется, aff — с какими статами билда сочетается, needs — обязательные статы
+const SCHOOLS = {
+  glint:    { stat: 'INT', ru: 'Глинтстоун', adj: 'Звёздный', aff: {}, sp: `Glintstone Pebble:1; Great Glintstone Shard:1; Swift Glintstone Shard:1; Glintstone Arc:2; Comet:2; Star Shower:2` },
+  carian:   { stat: 'INT', ru: 'Карийские клинки', adj: 'Лунный', aff: { DEX: 1.5 }, sp: `Carian Slicer:1; Glintblade Phalanx:1; Carian Greatsword:2; Carian Piercer:2; Adula's Moonblade:2; Loretta's Greatbow:2` },
+  gravity:  { stat: 'INT', ru: 'Гравитация', adj: 'Гравитационный', aff: { STR: 1.5 }, sp: `Rock Sling:1; Gravity Well:2; Collapsing Stars:2; Meteorite:2; Meteorite of Astel:3` },
+  crystal:  { stat: 'INT', ru: 'Хрустальные чары', adj: 'Хрустальный', aff: { STR: 0.5 }, sp: `Crystal Barrage:2; Crystal Burst:2; Shatter Earth:2; Crystal Release:2` },
+  night:    { stat: 'INT', ru: 'Ночь и невидимость', adj: 'Ночной', aff: { DEX: 1.5 }, sp: `Night Shard:2; Night Comet:2; Ambush Shadow:2; Unseen Blade:2; Night Maiden's Mist:2` },
+  magma:    { stat: 'INT', ru: 'Магма Гельмира', adj: 'Магматический', aff: { STR: 1, FAI: 1 }, sp: `Magma Shot:2; Roiling Magma:2; Gelmir's Fury:2; Rykard's Rancor:3` },
+  cold:     { stat: 'INT', ru: 'Холод', adj: 'Ледяной', aff: { DEX: 0.8 }, link: 'frost', sp: `Freezing Mist:2; Frozen Armament:2; Glintstone Icecrag:2; Zamor Ice Storm:3` },
+  scholar:  { stat: 'INT', ru: 'Поддержка отряда', adj: 'Учёный', aff: {}, support: true, sp: `Scholar's Armament:2; Scholar's Shield:2; Terra Magica:2` },
+  death:    { stat: 'INT', ru: 'Призрачное пламя', adj: 'Мертвенный', aff: { FAI: 1 }, sp: `Explosive Ghostflame:3; Fia's Mist:3; Ancient Death Rancor:3` },
+  primeval: { stat: 'INT', ru: 'Первородные чары', adj: 'Первородный', aff: {}, sp: `Comet Azur:3; Stars of Ruin:3; Founding Rain of Stars:3` },
+  heal:     { stat: 'FAI', ru: 'Два Перста: лечение', adj: 'Милосердный', aff: {}, support: true, sp: `Heal:1; Urgent Heal:1; Rejection:1; Blessing's Boon:2; Great Heal:3; Lord's Heal:3; Erdtree Heal:3` },
+  fire:     { stat: 'FAI', ru: 'Огонь монахов', adj: 'Огненный', aff: { STR: 1.5 }, sp: `Catch Flame:1; Flame Sling:1; O, Flame!:1; Flame, Grant Me Strength:2; Flame, Protect Me:2; Whirl, O Flame!:2` },
+  giants:   { stat: 'FAI', ru: 'Пламя великанов', adj: 'Великанский', aff: { STR: 1.5 }, sp: `Flame of the Fell God:3; Giantsflame Take Thee:3; Burn, O Flame!:3` },
+  black:    { stat: 'FAI', ru: 'Чёрное пламя богоубийц', adj: 'Чернопламенный', aff: { DEX: 1, STR: 1 }, sp: `Black Flame:2; Black Flame Blade:2; Black Flame's Protection:2; Scouring Black Flame:2; Black Flame Ritual:3` },
+  lightning:{ stat: 'FAI', ru: 'Драконий культ (молнии)', adj: 'Грозовой', aff: { DEX: 1.8 }, sp: `Lightning Spear:2; Honed Bolt:2; Electrify Armament:2; Ancient Dragons' Lightning Strike:3; Lansseax's Glaive:3` },
+  dragon:   { stat: 'FAI', ru: 'Драконье причастие', adj: 'Драконий', aff: { ARC: 2.5 }, needs: ['ARC'], sp: `Dragonfire:1; Dragonclaw:1; Glintstone Breath:2; Rotten Breath:2; Agheel's Flame:2` },
+  bestial:  { stat: 'FAI', ru: 'Звериные молитвы', adj: 'Звериный', aff: { STR: 1.8 }, sp: `Beast Claw:2; Bestial Sling:2; Bestial Vitality:2; Gurranq's Beast Claw:2` },
+  blood:    { stat: 'FAI', ru: 'Кровавое пламя', adj: 'Кровавый', aff: { ARC: 2.5 }, needs: ['ARC'], link: 'bleed', sp: `Bloodflame Talons:2; Bloodflame Blade:2; Swarm of Flies:2; Bloodboon:3` },
+  golden:   { stat: 'FAI', ru: 'Золотой порядок', adj: 'Золотой', aff: {}, support: true, sp: `Golden Vow:2; Blessing of the Erdtree:3; Protection of the Erdtree:3; Barrier of Gold:3; Order's Blade:3` },
+  rot:      { stat: 'FAI', ru: 'Слуги гнили', adj: 'Гнилостный', aff: { ARC: 1 }, link: 'poison', sp: `Poison Mist:2; Poison Armament:2; Pest Threads:2; Scarlet Aeonia:3` },
+  frenzy:   { stat: 'FAI', ru: 'Безумное пламя', adj: 'Безумный', aff: { INT: 1 }, sp: `Frenzied Burst:3; Howl of Shabriri:3; Inescapable Frenzy:3` },
+};
+for (const k in SCHOOLS) {
+  SCHOOLS[k].sp = SCHOOLS[k].sp.split(';').map(x => { const [n, t] = x.trim().split(':'); return { n, t: +t }; });
+  SCHOOLS[k].min = Math.min(...SCHOOLS[k].sp.map(x => x.t));
+}
+
+// Стартовые классы: базовые статы (VIG, MND, END, STR, DEX, INT, FAI, ARC), стартовое снаряжение и вес брони
+const CLASSES = [
+  { n: 'Vagabond',   ru: 'Бродяга',    base: [15, 10, 11, 14, 13, 9, 9, 7],   gear: ['straight', 'halberd', 'shieldM'], armor: 'heavy' },
+  { n: 'Warrior',    ru: 'Воин',       base: [11, 12, 11, 10, 16, 10, 8, 9],  gear: ['curved', 'curved', 'shieldS'],    armor: 'medium' },
+  { n: 'Hero',       ru: 'Герой',      base: [14, 9, 12, 16, 9, 7, 8, 11],    gear: ['axe', 'shieldM'],                 armor: 'medium' },
+  { n: 'Bandit',     ru: 'Разбойник',  base: [10, 11, 10, 9, 13, 9, 8, 14],   gear: ['dagger', 'lbow', 'shieldS'],      armor: 'light' },
+  { n: 'Astrologer', ru: 'Звездочёт',  base: [9, 15, 9, 8, 12, 16, 7, 9],     gear: ['staff', 'straight', 'shieldS'],   armor: 'light' },
+  { n: 'Prophet',    ru: 'Пророк',     base: [10, 14, 8, 11, 10, 7, 16, 10],  gear: ['seal', 'spear'],                  armor: 'light' },
+  { n: 'Samurai',    ru: 'Самурай',    base: [12, 11, 13, 12, 15, 9, 8, 8],   gear: ['katana', 'bow', 'shieldS'],       armor: 'medium' },
+  { n: 'Prisoner',   ru: 'Узник',      base: [11, 12, 11, 11, 14, 14, 6, 9],  gear: ['thrust', 'staff', 'shieldS'],     armor: 'medium' },
+  { n: 'Confessor',  ru: 'Исповедник', base: [10, 13, 10, 12, 12, 9, 14, 9],  gear: ['straight', 'seal', 'shieldM'],    armor: 'medium' },
+  { n: 'Wretch',     ru: 'Несчастный', base: [10, 10, 10, 10, 10, 10, 10, 10], gear: ['hammer'],                        armor: 'none' },
+];
+const VEC_STATS = ['MND', 'END', 'STR', 'DEX', 'INT', 'FAI', 'ARC'];
+
+const STATUS = {
+  bleed:   { ru: 'кровотечение', adj: 'Кровавый' },
+  frost:   { ru: 'обморожение', adj: 'Ледяной' },
+  poison:  { ru: 'отравление', adj: 'Ядовитый' },
+  rot:     { ru: 'алая гниль', adj: 'Гнилостный' },
+  madness: { ru: 'безумие', adj: 'Безумный' },
+};
+const STAT_RU = { VIG: 'живучесть', MND: 'ум', END: 'выносливость', STR: 'сила', DEX: 'ловкость', INT: 'интеллект', FAI: 'вера', ARC: 'тайна' };
+
+// ===== Вспомогательные =====
+const has = (s, st) => s.stats.includes(st);
+const isMagic = r => r === 'hybrid' || r === 'caster' || r === 'healer';
+const handKeys = s => [s.right, s.left.cls].filter(Boolean);
+const reqMax = (s, st) => Math.max(0, ...handKeys(s).map(k => W[k].req[st] || 0));
+const armorOk = (start, w) => w === 'light' ? ['light', 'none'].includes(start.armor) : w === 'medium' ? start.armor !== 'heavy' : ['heavy', 'medium'].includes(start.armor);
+
+// Главное оружие требует смены аффинити, если стат INT/FAI/ARC в билде, а подходящего оружия с «родным» скейлом нет
+function needsInfusion(s) {
+  const r = W[s.right];
+  if (r.kind !== 'melee') return false;
+  return s.stats.filter(x => ['INT', 'FAI', 'ARC'].includes(x)).some(st => !r.ex.some(e => e.t <= 2 && e.st.includes(st)));
+}
+
+// ===== Пассивки =====
+// pre — как пассивка сужает выбор, если выпала первой; ok — совместима ли с готовым билдом
+const banPassive = st => ({
+  id: 'no' + st, t: `Нельзя качать ${st} (оставить стартовое значение)`,
+  pre: c => c.ban.add(st),
+  ok: s => !has(s, st) && reqMax(s, st) <= 1 && !s.schools.some(k => (SCHOOLS[k].needs || []).includes(st)),
+  w: s => ['STR', 'DEX'].includes(st) ? 1.4 : 0.35,
+  why: s => ['STR', 'DEX'].includes(st) ? `в руках только то, чему хватает стартового ${st}` : '',
+});
+const statusPassive = st => ({
+  id: st, t: `Основное оружие обязано накладывать ${STATUS[st].ru}`,
+  pre: c => { c.status = st; },
+  ok: s => s.status === st,
+  w: s => s.status === st ? 6 : 1,
+  why: s => `в примерах правой руки есть оружие с этим статусом уже на ранних этапах`,
+});
+const PASSIVES = [
+  { id: 'helm', t: 'Нельзя носить шлем', ep: 'Простоволосый' },
+  { id: 'pants', t: 'Нельзя носить штаны', ep: 'Бесштанный' },
+  { id: 'set', t: 'Вся броня — из одного сета' },
+  { id: 'keepsake', t: 'Без стартового памятного подарка (keepsake)' },
+  { id: 'talisman', t: 'Один слот талисмана всегда пустой' },
+  { id: 'runes', t: 'Нельзя подбирать руны после смерти', ep: 'Расточитель' },
+  { id: 'maps', t: 'Нельзя подбирать карты', ep: 'Заблудший' },
+  { id: 'lvl100', t: 'Максимальный уровень — 100', ep: 'Скромный' },
+  { id: 'vig30', t: 'VIG не выше 30', ep: 'Хрупкий' },
+  { id: 'flasks', t: 'Поровну фляг багровых и лазурных слёз' },
+  { id: 'greatrunes', t: 'Собрать все великие руны до финального босса' },
+  { id: 'torrent', t: 'Без Торрента, кроме мест, где без него не пройти', ep: 'Пеший' },
+  { id: 'physick', t: 'Без Чудесной склянки (Wondrous Physick)', ep: 'Трезвенник' },
+  { id: 'upgrade', t: 'Оружие не выше +15 (уникальное — не выше +6)' },
+  { id: 'consum', t: 'Никаких расходников, кроме фляг', ok: s => s.role !== 'archer' },
+  { id: 'keepArmor', t: 'Носить стартовую броню до конца игры', ok: s => armorOk(s.start, s.weight) },
+  { id: 'ash', t: 'Нельзя менять пепел войны и аффинити', pre: c => { c.noAsh = true; }, ok: s => !needsInfusion(s), why: () => 'оружие подобрано со «своим» скейлом, перековка не нужна' },
+  { id: 'light', t: 'Только лёгкий перекат (загрузка < 30%)', pre: c => { c.weight = 'light'; },
+    ok: (s, ids) => s.weight === 'light' && (!ids.has('keepArmor') || ['light', 'none'].includes(s.start.armor)), w: 1.3,
+    why: () => 'ни огромного оружия, ни больших щитов' },
+  { id: 'heavy', t: 'Загрузка всегда не ниже 50%', pre: c => { c.weight = 'notlight'; },
+    ok: (s, ids) => s.weight !== 'light' && (!ids.has('keepArmor') || s.start.armor === 'heavy'), w: 1.1,
+    why: () => 'тяжёлая броня под тяжёлое оружие' },
+  { id: 'end20', t: 'END не выше 20', pre: c => { c.weight = 'notheavy'; }, ok: s => s.weight !== 'heavy', why: () => 'в билде нет ничего, что требует большой загрузки' },
+  banPassive('STR'), banPassive('DEX'), banPassive('INT'), banPassive('FAI'), banPassive('ARC'),
+  { id: 'strdex', t: 'STR и DEX всегда равны', pre: c => { c.strdex = true; },
+    ok: s => (has(s, 'STR') && has(s, 'DEX')) || (!has(s, 'STR') && !has(s, 'DEX') && Math.max(reqMax(s, 'STR'), reqMax(s, 'DEX')) <= 1),
+    why: s => has(s, 'STR') ? 'билд и так на качество (STR + DEX)' : 'оружию хватает низких STR и DEX' },
+  { id: 'noMagic', t: 'Никакой магии: ни чар, ни молитв', pre: c => { c.noMagic = true; }, ok: s => !isMagic(s.role), w: s => 0.5, why: () => 'в руках ни одного катализатора' },
+  { id: 'noShield', t: 'Никаких щитов', pre: c => { c.noShield = true; }, ok: s => s.left.mode !== 'shield', w: 0.8 },
+  { id: 'noMelee', t: 'Никакого ближнего боя: только магия и стрельба', pre: c => { c.noMelee = true; },
+    ok: s => ['caster', 'healer', 'archer'].includes(s.role) && !['sidearm', 'twin', 'torch'].includes(s.left.mode), w: 1.2,
+    why: () => 'билд и так воюет на дистанции' },
+  { id: 'heal', coop: true, t: 'Всегда держать лечащую молитву и отхиливать напарника', pre: c => { c.needHeal = true; },
+    ok: s => s.schools.includes('heal'), w: s => s.schools.includes('heal') ? 3 : 1, why: () => 'в билде есть печать и молитвы Двух Перстов' },
+  { id: 'spells3', t: 'Не больше трёх заклинаний в слотах одновременно', ok: s => isMagic(s.role) },
+  { id: 'noShop', t: 'Нельзя пользоваться торговцами', pre: c => { c.noShop = true; }, ok: s => s.role === 'melee', why: () => 'ни чар, ни стрел — только то, что добыто в бою' },
+  { id: 'twohand', t: 'Основное оружие — только двуручным хватом', pre: c => { c.twohand = true; }, ok: s => s.left.mode === 'twohand', w: s => s.left.mode === 'twohand' ? 2 : 1 },
+  statusPassive('bleed'), statusPassive('frost'), statusPassive('poison'),
+];
+const pw = (p, s) => typeof p.w === 'function' ? p.w(s) : (p.w ?? 1);
+
+// ===== Случайность с сидом =====
+function hashStr(str) { let h = 1779033703 ^ str.length; for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; } return h >>> 0; }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function wpick(R, arr, wf) {
+  const ws = arr.map(x => Math.max(0, wf(x)));
+  const total = ws.reduce((a, b) => a + b, 0);
+  if (total <= 0) return null;
+  let r = R() * total;
+  for (let i = 0; i < arr.length; i++) { r -= ws[i]; if (r < 0) return arr[i]; }
+  return arr[arr.length - 1];
+}
+
+// ===== Совместимость оружия со статами и весом =====
+function reqOk(cls, s) {
+  for (const b of s.c.ban) if ((cls.req[b] || 0) > 1) return false;
+  if (s.c.strdex && !(has(s, 'STR') && has(s, 'DEX')) && Math.max(cls.req.STR || 0, cls.req.DEX || 0) > 1) return false;
+  return true;
+}
+const WFIT = { S: { light: 1, medium: 1, heavy: 0.6 }, M: { light: 1, medium: 1, heavy: 0.8 }, L: { light: 0.3, medium: 1, heavy: 1 }, XL: { light: 0, medium: 0.35, heavy: 1 } };
+const weightFit = (cls, w) => WFIT[cls.size][w];
+function aff(cls, st, s) {
+  if (st === 'STR' || st === 'DEX') return cls.aff[st] || 0;
+  if (cls.ex.some(e => e.t <= 2 && e.st.includes(st))) return 2.5;   // есть оружие с «родным» скейлом
+  return cls.kind === 'melee' && !s.c.noAsh ? 0.7 : 0;               // только через аффинити
+}
+function statScore(cls, s) {
+  let sc = s.stats.reduce((a, st) => a + aff(cls, st, s), 0);
+  if ((cls.req.STR || 0) >= 3 && !has(s, 'STR')) sc *= 0.15;
+  if ((cls.req.DEX || 0) >= 2 && !has(s, 'DEX')) sc *= 0.5;
+  return sc;
+}
+const innateStatus = (cls, st) => cls.ex.some(e => e.x === st && e.t <= 2);
+// Холод и яд можно дать и через аффинити, если в билде есть INT / ARC
+const infusedStatus = (cls, st, s) => cls.kind === 'melee' && !s.c.noAsh && ((st === 'frost' && has(s, 'INT')) || (st === 'poison' && has(s, 'ARC')));
+const hasStatus = (cls, st, s) => innateStatus(cls, st) || infusedStatus(cls, st, s);
+
+// ===== Шаги генерации =====
+const STAT_OPTS = [['STR', 3], ['DEX', 3], ['INT', 2.4], ['FAI', 2.4], ['ARC', 0.8], ['STR+DEX', 2], ['STR+FAI', 1.5], ['DEX+INT', 1.5], ['DEX+ARC', 1.2], ['STR+ARC', 0.5], ['FAI+ARC', 1], ['INT+FAI', 0.7], ['STR+INT', 0.8], ['DEX+FAI', 1]];
+function rollStats(R, c) {
+  const ok = STAT_OPTS.filter(([o]) => {
+    const p = o.split('+');
+    if (p.some(x => c.ban.has(x))) return false;
+    if ((c.noMagic || c.noShop) && p.some(x => x === 'INT' || x === 'FAI')) return false;
+    if (c.needHeal && !p.includes('FAI')) return false;
+    if (c.strdex && p.includes('STR') !== p.includes('DEX')) return false;
+    if (c.noMelee && o === 'ARC') return false;
+    if (c.status && !p.some(x => ['STR', 'DEX', 'ARC'].includes(x)) && R() < 0.7) return false;
+    return true;
+  });
+  const o = wpick(R, ok, x => x[1]);
+  return o && o[0].split('+');
+}
+
+function rollRole(R, s, coop) {
+  const c = s.c, st = s.stats;
+  const cast = st.some(x => x === 'INT' || x === 'FAI');
+  const phys = st.some(x => x === 'STR' || x === 'DEX');
+  const magicOk = cast && !c.noMagic && !c.noShop && !c.twohand;
+  const w = {
+    melee:  !c.noMelee && !c.needHeal ? (cast ? 0.5 : 5) : 0,
+    archer: !c.noShop && !c.needHeal && !c.status && !c.twohand && phys ? (has(s, 'DEX') ? 1.3 : 0.6) : 0,
+    hybrid: magicOk && !c.noMelee ? 3 : 0,
+    caster: magicOk && !c.status ? (phys ? 1 : 3) : 0,
+    healer: magicOk && !c.status && has(s, 'FAI') ? (coop ? 2 : 0.4) : 0,
+  };
+  if (c.needHeal && !has(s, 'FAI')) { w.hybrid = w.caster = 0; }
+  return wpick(R, Object.keys(w), k => w[k]);
+}
+
+function rollWeight(R, s) {
+  let w;
+  if (s.role === 'melee' || s.role === 'hybrid') {
+    const S = has(s, 'STR'), D = has(s, 'DEX');
+    w = S && D ? { light: 1.5, medium: 4, heavy: 2.5 } : S ? { light: 1, medium: 3, heavy: 4 } : D ? { light: 3, medium: 4, heavy: 1 } : { light: 2, medium: 4, heavy: 1.5 };
+  } else if (s.role === 'archer') w = { light: 3, medium: 4, heavy: 1 };
+  else w = { light: 4, medium: 3, heavy: 0.5 };
+  const cw = s.c.weight;
+  if (cw === 'light') return 'light';
+  if (cw === 'notlight') w.light = 0;
+  if (cw === 'notheavy') w.heavy = 0;
+  return wpick(R, Object.keys(w), k => w[k]);
+}
+
+function rollRight(R, s) {
+  const c = s.c;
+  if (s.role === 'healer') return 'seal';
+  if (s.role === 'caster') {
+    if (c.needHeal) return 'seal';
+    if (has(s, 'INT') && has(s, 'FAI')) return R() < 0.5 ? 'staff' : 'seal';
+    return has(s, 'INT') ? 'staff' : 'seal';
+  }
+  const pool = s.role === 'archer' ? BOWS : MELEE;
+  const cands = pool.filter(k => reqOk(W[k], s) && weightFit(W[k], s.weight) > 0 && (!s.status || hasStatus(W[k], s.status, s)));
+  return wpick(R, cands, k => {
+    let sc = statScore(W[k], s) * weightFit(W[k], s.weight);
+    if (s.status && has(s, 'ARC')) sc *= 1.5;
+    return sc ** 1.5;
+  });
+}
+
+function rollLeft(R, s) {
+  const c = s.c, r = W[s.right], opts = [];
+  const add = (w, f) => { if (w > 0) opts.push({ w, f }); };
+  const big = r.size === 'L' || r.size === 'XL';
+  const sidearm = sizes => wpick(R, MELEE.filter(k => k !== s.right && sizes.includes(W[k].size) && reqOk(W[k], s) && weightFit(W[k], s.weight) > 0), k => statScore(W[k], s) ** 1.5);
+  const shield = kinds => {
+    const tw = { light: { shieldS: 3, shieldM: 1, shieldG: 0 }, medium: { shieldS: 1.5, shieldM: 3, shieldG: 0.5 }, heavy: { shieldS: 0.3, shieldM: 2, shieldG: 3 } }[s.weight];
+    return wpick(R, kinds.filter(k => reqOk(W[k], s)), k => tw[k] * (k === 'shieldS' && has(s, 'DEX') ? 1.5 : 1));
+  };
+  const castStats = s.stats.filter(x => x === 'INT' || x === 'FAI');
+  switch (s.role) {
+    case 'melee':
+      if (c.twohand) return { mode: 'twohand' };
+      add(r.size === 'XL' ? 1.2 : 3, () => ({ mode: 'twin', cls: s.right }));
+      add(2.2, () => { const k = sidearm(['S', 'M']); return k && { mode: 'sidearm', cls: k }; });
+      add(c.noShield ? 0 : 2, () => { const k = shield(['shieldS', 'shieldM', 'shieldG']); return k && { mode: 'shield', cls: k }; });
+      add(big ? 2.5 : 0.6, () => ({ mode: 'twohand' }));
+      add(0.35, () => ({ mode: 'torch', cls: 'torch' }));
+      add(has(s, 'DEX') && !c.noShop && reqOk(W.lbow, s) ? 0.5 : 0, () => ({ mode: 'bow', cls: 'lbow' }));
+      break;
+    case 'hybrid': {
+      const st = c.needHeal ? 'FAI' : castStats[Math.floor(R() * castStats.length)];
+      return { mode: 'catalyst', cls: st === 'INT' ? 'staff' : 'seal' };
+    }
+    case 'archer':
+      add(c.noMelee ? 0 : 3, () => { const k = sidearm(['S', 'M']); return k && { mode: 'sidearm', cls: k }; });
+      add(c.noShield ? 0 : 1.5, () => { const k = shield(['shieldS', 'shieldM']); return k && { mode: 'shield', cls: k }; });
+      add(0.4, () => ({ mode: 'none' }));
+      break;
+    case 'caster': {
+      const other = castStats.find(x => x !== r.stat);
+      if (other) add(4, () => ({ mode: 'catalyst', cls: other === 'INT' ? 'staff' : 'seal' }));
+      add(c.noShield ? 0 : 2, () => { const k = shield(['shieldS', 'shieldM']); return k && { mode: 'shield', cls: k }; });
+      add(c.noMelee ? 0 : 0.8, () => { const k = sidearm(['S']); return k && { mode: 'sidearm', cls: k }; });
+      add(has(s, 'INT') && !c.noMelee ? 0.4 : 0, () => ({ mode: 'torch', cls: 'torch' }));
+      add(0.6, () => ({ mode: 'none' }));
+      break;
+    }
+    case 'healer':
+      add(c.noShield ? 0 : 3, () => { const k = shield(['shieldM', 'shieldG']); return k && { mode: 'shield', cls: k }; });
+      add(c.noMelee ? 0 : 0.8, () => { const k = sidearm(['S', 'M']); return k && { mode: 'sidearm', cls: k }; });
+      add(has(s, 'INT') ? 1 : 0, () => ({ mode: 'catalyst', cls: 'staff' }));
+      add(0.5, () => ({ mode: 'none' }));
+      break;
+  }
+  while (opts.length) {
+    const o = wpick(R, opts, o => o.w);
+    const res = o.f();
+    if (res) return res;
+    opts.splice(opts.indexOf(o), 1);
+  }
+  return null;
+}
+
+function rollSchools(R, s) {
+  if (!isMagic(s.role)) return [];
+  const cats = handKeys(s).filter(k => W[k].stat).map(k => W[k].stat);
+  const main = s.role === 'hybrid' ? W[s.left.cls].stat : W[s.right].stat;
+  const usable = k => { const x = SCHOOLS[k]; return cats.includes(x.stat) && (x.needs || []).every(n => has(s, n)); };
+  const score = k => {
+    const x = SCHOOLS[k];
+    let sc = 1 + s.stats.reduce((a, st) => a + (x.aff[st] || 0), 0);
+    if (x.link && x.link === s.status) sc *= 3;
+    if (x.support) sc *= s.role === 'healer' ? 3 : s.coop ? 1.3 : 0.6;
+    return sc;
+  };
+  const out = [];
+  // первая школа обязана давать заклинания рано (у чистого мага — с самого начала)
+  const first = s.role === 'healer' ? 'heal' : wpick(R, Object.keys(SCHOOLS).filter(k => SCHOOLS[k].stat === main && usable(k) && SCHOOLS[k].min <= 2 && k !== 'heal'), k => score(k) * (SCHOOLS[k].min === 1 ? 1.5 : 1));
+  if (!first) return null;
+  out.push(first);
+  let extra = s.role === 'caster' ? 1 + (R() < 0.5 ? 1 : 0) : s.role === 'healer' ? 1 + (R() < 0.4 ? 1 : 0) : (R() < 0.4 ? 1 : 0);
+  const other = cats.find(x => x !== main);
+  if (other) {
+    const k = wpick(R, Object.keys(SCHOOLS).filter(k => SCHOOLS[k].stat === other && usable(k) && SCHOOLS[k].min <= 2), score);
+    if (k) { out.push(k); extra--; }
+  }
+  while (extra-- > 0) {
+    const k = wpick(R, Object.keys(SCHOOLS).filter(k => usable(k) && !out.includes(k) && !(s.role === 'healer' && SCHOOLS[k].support && out.some(o => o !== 'heal' && SCHOOLS[o].support))), score);
+    if (k) out.push(k);
+  }
+  if (s.c.needHeal && !out.includes('heal')) {
+    if (!cats.includes('FAI')) return null;
+    out.push('heal');
+  }
+  return out;
+}
+
+// Вектор стартового класса: статы относительно 10, снаряжение, вес брони
+function classVec(k) {
+  const v = {};
+  VEC_STATS.forEach((d, i) => { v[d] = k.base[i + 1] - 10; });
+  k.gear.forEach(g => { v[g] = (v[g] || 0) + 2.5; });
+  v.RANGED = k.gear.some(g => BOWS.includes(g)) ? 3 : 0;
+  v.HEAVY  = { heavy: 3, medium: 1, light: -2, none: -3 }[k.armor];
+  return v;
+}
+
+// Вектор билда в тех же осях
+function buildVec(s) {
+  const v = {};
+  s.stats.forEach(st => { v[st] = 6; });
+  s.c.ban.forEach(st => { v[st] = -3; });
+  if (isMagic(s.role)) v.MND = 4;
+  v.END    = { light: 0, medium: 2, heavy: 4 }[s.weight];
+  v.HEAVY  = { light: -2, medium: 1, heavy: 3 }[s.weight];
+  v.RANGED = s.role === 'archer' ? 5 : s.left.mode === 'bow' ? 2 : 0;
+  v[s.right] = (v[s.right] || 0) + 4;
+  if (s.left.cls) v[s.left.cls] = (v[s.left.cls] || 0) + 2;
+  return v;
+}
+
+function cosine(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const x = a[k] || 0, y = b[k] || 0;
+    dot += x * y; na += x * x; nb += y * y;
+  }
+  return na && nb ? dot / Math.sqrt(na * nb) : 0;
+}
+
+// Стартовый класс — ближайший к билду по косинусному сходству
+function pickStart(s) {
+  const bv = buildVec(s);
+  return CLASSES.map(k => ({ ...k, sim: cosine(bv, classVec(k)) })).sort((a, b) => b.sim - a.sim)[0];
+}
+// ===== Сборка билда =====
+const DIFF = [
+  { n: 2, rule: 'Две пассивки. Любое оружие указанных классов, менять можно сколько угодно.' },
+  { n: 3, rule: 'Три пассивки. Только указанные классы оружия, конкретное оружие внутри класса менять можно.' },
+  { n: 4, rule: 'Четыре пассивки. По одному оружию на руку до конца игры (улучшать можно). Пока нужное не добыто — любое из класса.' },
+  { n: 5, rule: 'Пять пассивок. Как на «Сложном», плюс нельзя пользоваться вторым и третьим слотом оружия.' },
+];
+
+function attempt(R, diff, coop) {
+  const c = { ban: new Set(), weight: null, noMagic: false, noMelee: false, noShield: false, strdex: false, noAsh: false, noShop: false, needHeal: false, status: null, twohand: false };
+  const chosen = [];
+  // Иногда первая пассивка выпадает до сборки и задаёт рамки всему остальному
+  if (R() < 0.65) {
+    const p = wpick(R, PASSIVES.filter(p => p.pre && (!p.coop || coop)), p => ({ frost: 0.3, poison: 0.25 })[p.id] ?? 1);
+    p.pre(c);
+    chosen.push(p);
+  }
+  const s = { c, coop };
+  s.stats = rollStats(R, c); if (!s.stats) return null;
+  s.role = rollRole(R, s, coop); if (!s.role) return null;
+  s.weight = rollWeight(R, s); if (!s.weight) return null;
+  s.status = c.status || ((s.role === 'melee' || s.role === 'hybrid') && R() < (has(s, 'ARC') ? 0.55 : 0.22)
+    ? wpick(R, ['bleed', 'frost', 'poison'], x => ({ bleed: 5, frost: has(s, 'INT') ? 1.5 : 0.4, poison: has(s, 'ARC') ? 1 : 0.3 })[x]) : null);
+  s.right = rollRight(R, s);
+  if (!s.right) {
+    if (c.status) return null;
+    s.status = null;
+    s.right = rollRight(R, s);
+    if (!s.right) return null;
+  }
+  s.left = rollLeft(R, s); if (!s.left) return null;
+  s.schools = rollSchools(R, s); if (!s.schools) return null;
+  s.start = pickStart(s);
+
+  // Добираем остальные пассивки только из совместимых с тем, что уже выпало
+  const ids = new Set(chosen.map(p => p.id));
+  const okAll = (p, set) => (p.ok ? p.ok(s, set) : true);
+  for (const p of chosen) if (!okAll(p, ids)) return null;
+  const need = DIFF[diff].n;
+  while (chosen.length < need) {
+    const pool = PASSIVES.filter(p => {
+      if (ids.has(p.id) || (p.coop && !coop)) return false;
+      const set = new Set([...ids, p.id]);
+      return okAll(p, set) && chosen.every(q => okAll(q, set));
+    });
+    const p = wpick(R, pool, p => pw(p, s));
+    if (!p) return null;
+    chosen.push(p); ids.add(p.id);
+  }
+  s.passives = chosen;
+  return s;
+}
+
+function generate(seed, diff, coop) {
+  for (let i = 0; i < 60; i++) {
+    const s = attempt(mulberry(hashStr(`${seed}|${diff}|${coop ? 1 : 0}|${i}`)), diff, coop);
+    if (s) return s;
+  }
+  return null;
+}
+
+// ===== Описание постфактум =====
+function describe(s) {
+  const r = W[s.right], l = s.left, sch = s.schools.map(k => SCHOOLS[k]);
+  // Прилагательное: статус, потом первая школа, потом вес
+  const offensive = sch.find(x => !x.support && x.min <= 2);
+  let adj = s.status ? STATUS[s.status].adj : offensive ? offensive.adj : sch[0] ? sch[0].adj : null;
+  if (!adj) adj = s.weight === 'heavy' ? 'Тяжёлый' : s.weight === 'light' ? 'Проворный' : { STR: 'Могучий', DEX: 'Ловкий', INT: 'Учёный', FAI: 'Набожный', ARC: 'Таинственный' }[s.stats[0]];
+  let noun;
+  if (s.role === 'caster') noun = s.left.mode === 'catalyst' ? 'Мистик' : r.stat === 'INT' ? 'Чародей' : 'Жрец';
+  else if (s.role === 'healer') noun = offensive ? 'Лекарь' : 'Полевой лекарь';
+  else if (s.role === 'hybrid') noun = r.noun + (W[l.cls].stat === 'INT' ? '-чародей' : s.schools[0] === 'heal' ? '-лекарь' : '-жрец');
+  else if (s.role === 'melee' && l.mode === 'shield' && has(s, 'FAI')) noun = 'Паладин';
+  else noun = r.noun;
+  if (s.role === 'healer' && !offensive) adj = null;
+  const name = adj ? `${adj} ${noun.charAt(0).toLowerCase() + noun.slice(1)}` : noun;
+
+  const wword = { light: 'Налегке', medium: 'В средней броне', heavy: 'В тяжёлой броне' }[s.weight];
+  const leftTxt = {
+    twin: 'во второй такое же (парный хват)', sidearm: `в левой запасное: ${l.cls && W[l.cls].ru.toLowerCase()}`,
+    shield: `в левой ${{ shieldS: 'малый щит', shieldM: 'средний щит', shieldG: 'большой щит' }[l.cls]}`, twohand: 'держит двумя руками',
+    torch: 'в левой факел', bow: 'в левой лёгкий лук на подхват', catalyst: `в левой ${l.cls === 'staff' ? 'посох' : 'печать'}`, none: 'левая свободна',
+  }[l.mode];
+  let tag = `${wword}, качает ${s.stats.join(' + ')}. В правой ${s.role === 'caster' || s.role === 'healer' ? (r.stat === 'INT' ? 'посох' : 'печать') : r.ru.toLowerCase()}, ${leftTxt}.`;
+  if (s.status) tag += ` Давит ${STATUS[s.status].ru}.`;
+  if (sch.length) tag += ` Магия: ${sch[0].ru.toLowerCase()}${sch.length > 1 ? `, дальше ${sch.slice(1).map(x => x.ru.toLowerCase()).join(', ')}` : ''}.`;
+  const ep = s.passives.find(p => p.ep);
+  return { name, tag, aka: ep ? ep.ep : null };
+}
+
+function statPlan(s) {
+  const out = [{ k: 'VIG', cls: '' }];
+  s.stats.forEach(st => out.push({ k: st, cls: 'main' }));
+  if (isMagic(s.role)) out.push({ k: 'MND', cls: '' });
+  if (s.weight === 'heavy' || (s.role === 'melee' && s.weight === 'medium')) out.push({ k: 'END', cls: '' });
+  ['STR', 'DEX'].forEach(st => { if (!has(s, st) && !s.c.ban.has(st) && reqMax(s, st) >= 2) out.push({ k: st, cls: 'note', note: 'до требований' }); });
+  s.c.ban.forEach(st => out.push({ k: st, cls: 'ban' }));
+  s.passives.filter(p => p.id.startsWith('no') && ['noSTR', 'noDEX', 'noINT', 'noFAI', 'noARC'].includes(p.id)).forEach(p => {
+    const st = p.id.slice(2); if (!s.c.ban.has(st)) out.push({ k: st, cls: 'ban' });
+  });
+  return out;
+}
+
+// Примеры оружия для руки: ближе к статам и статусу билда, раньше по прогрессии
+function examples(key, s, isMain) {
+  const cls = W[key];
+  const scored = cls.ex.filter(e => !(e.st.length && e.st.every(x => s.c.ban.has(x)))).map(e => {
+    let sc = e.st.filter(x => has(s, x)).length * 2 - e.t * 0.8;
+    if (!e.st.length) sc += 1;
+    if (isMain && s.status && e.x === s.status) sc += 4;
+    if (e.x && SCHOOLS[e.x] && s.schools.includes(e.x)) sc += 4;
+    if (e.x === 'rot' || e.x === 'madness') sc -= 1;
+    return { e, sc };
+  });
+  scored.sort((a, b) => b.sc - a.sc);
+  return scored.slice(0, 4).map(x => x.e).sort((a, b) => a.t - b.t);
+}
+
+function infusionHint(key, s) {
+  const cls = W[key];
+  if (cls.kind !== 'melee' || s.c.noAsh) return '';
+  const map = { INT: 'Magic / Cold', FAI: 'Sacred / Flame Art', ARC: 'Blood / Occult / Poison' };
+  const miss = s.stats.filter(st => map[st] && !cls.ex.some(e => e.t <= 2 && e.st.includes(st)));
+  return miss.length ? `Под ${miss.join(' и ')}: любое оружие класса с аффинити ${miss.map(m => map[m]).join(', ')} (точильные клинки — к середине игры).` : '';
+}
+
+// ===== Отрисовка =====
+const $ = id => document.getElementById(id);
+const esc = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
+const wiki = n => 'https://eldenring.wiki.fextralife.com/' + encodeURIComponent(n.replace(/ /g, '+')).replace(/%2B/g, '+');
+const TIER = ['', 'рано', 'середина', 'поздно'];
+const tierChip = t => `<span class="tier t${t}">${TIER[t]}</span>`;
+
+function itemList(list) {
+  return `<ul class="items">${list.map(e => `<li>${tierChip(e.t)}<a href="${wiki(e.n)}" target="_blank" rel="noopener">${esc(e.n)}</a>${e.x && STATUS[e.x] ? `<span class="st ${e.x}">${STATUS[e.x].ru}</span>` : ''}</li>`).join('')}</ul>`;
+}
+
+function handHTML(side, s) {
+  const isRight = side === 'right';
+  const key = isRight ? s.right : s.left.cls;
+  const mode = isRight ? 'main' : s.left.mode;
+  const r = W[s.right];
+  let role, desc = '';
+  if (isRight) {
+    role = { melee: 'Основное оружие', hybrid: 'Основное оружие', archer: 'Основное: стрельба', caster: 'Основной катализатор', healer: 'Печать лекаря' }[s.role];
+    if (s.role === 'archer') desc = 'Лук — главное оружие. Ближний бой — только по ситуации, через левую руку.';
+  } else {
+    const big = r.size === 'L' || r.size === 'XL';
+    ({
+      twin: () => { role = 'Парное оружие'; desc = 'Второй экземпляр того же класса — для парного хвата (powerstance).'; },
+      sidearm: () => { role = 'Запасное оружие'; desc = s.role === 'archer' ? 'Для тех, кто подобрался вплотную.' : big ? 'Быстрое оружие для толп и юрких врагов; основное — для боссов и крупных.' : 'Второй стиль под другие ситуации: смена дистанции и темпа.'; },
+      shield: () => { role = 'Щит'; desc = W[key].size === 'S' ? 'Малый щит — под парирования.' : W[key].size === 'XL' ? 'Большой щит — стоять в блоке и держать агро, пока напарник бьёт.' : 'Средний щит — надёжный блок.'; },
+      twohand: () => { role = 'Пусто'; desc = 'Основное оружие — двумя руками.'; },
+      torch: () => { role = 'Факел'; desc = 'Свет в катакомбах, огонь против зверей и нежити.'; },
+      bow: () => { role = 'Лук на подхват'; desc = 'Стянуть врага из толпы или сбить летуна.'; },
+      catalyst: () => { role = 'Катализатор'; desc = s.role === 'hybrid' ? 'Заклинания из левой руки, между ударами.' : 'Вторая школа магии.'; },
+      none: () => { role = 'Свободно'; desc = 'Левую руку оставить пустой или под второй слот правой.'; },
+    })[mode]();
+  }
+  let body = '';
+  if (key) {
+    const cls = W[key];
+    body = `<h4>${esc(cls.ru)}</h4><div class="en">${esc(cls.en)}</div>` + itemList(examples(key, s, isRight));
+    const hint = mode === 'main' || mode === 'sidearm' ? infusionHint(key, s) : '';
+    if (hint) body += `<p class="hint">${esc(hint)}</p>`;
+    if (mode === 'main' && s.status && !innateStatus(cls, s.status))
+      body += `<p class="hint">${STATUS[s.status].ru[0].toUpperCase() + STATUS[s.status].ru.slice(1)} — через аффинити ${s.status === 'frost' ? 'Cold' : 'Poison'} (к середине игры), до этого — ${s.status === 'frost' ? 'Freezing Grease' : 'Poison Grease'}.</p>`;
+  } else {
+    body = `<h4>—</h4>`;
+  }
+  return `<section class="panel hand"><p class="eyebrow">${isRight ? 'Правая рука' : 'Левая рука'}</p><p class="role">${role}</p>${body}${desc ? `<p class="desc">${desc}</p>` : ''}</section>`;
+}
+
+let current = null;
+function render(s) {
+  current = s;
+  const d = describe(s);
+  $('build').innerHTML = `
+    <p class="eyebrow">Что выпало</p>
+    <h2>${esc(d.name)}</h2>
+    ${d.aka ? `<p class="aka">прозвище — «${esc(d.aka)}»</p>` : ''}
+    <p class="tagline">${esc(d.tag)}</p>
+    <dl class="facts">
+      <div><dt>Стартовый класс</dt><dd><a href="${wiki(s.start.n)}" target="_blank" rel="noopener">${s.start.n}</a> · ${s.start.ru} <span class="st">сходство ${s.start.sim.toFixed(2)}</span></dd></div>
+      <div><dt>Прокачка по порядку</dt><dd class="stats">${statPlan(s).map(x => `<span class="stat ${x.cls}" title="${STAT_RU[x.k]}${x.cls === 'ban' ? ' — не качать' : ''}">${x.k}${x.note ? ` ${x.note}` : ''}</span>`).join('')}</dd></div>
+      <div><dt>Загрузка</dt><dd>${{ light: 'лёгкая, до 30%', medium: 'средняя, до 70%', heavy: 'тяжёлая, можно почти до 70% в тяжёлой броне' }[s.weight]}</dd></div>
+    </dl>`;
+  $('passives').innerHTML = `<h3>Пассивки</h3><ol class="passives">${s.passives.map(p => {
+    const why = p.why ? p.why(s) : '';
+    return `<li>${esc(p.t)}${why ? `<span class="why">${esc(why)}</span>` : ''}</li>`;
+  }).join('')}</ol>`;
+  $('hands').innerHTML = handHTML('right', s) + handHTML('left', s);
+  const m = $('magic');
+  if (s.schools.length) {
+    m.hidden = false;
+    m.innerHTML = `<h3>Магия</h3><div class="schools">${s.schools.map((k, i) => {
+      const x = SCHOOLS[k];
+      const when = i === 0 ? 'основа билда' : x.min >= 3 ? 'добавится ближе к концу' : 'добавится по ходу игры';
+      const start = i === 0 && x.min > 1 ? `<p class="hint">Пока школа не собрана: ${x.stat === 'INT' ? 'Glintstone Pebble' : 'Catch Flame и Heal'}.</p>` : '';
+      return `<div class="school"><h4>${esc(x.ru)}</h4><div class="when">${when}${x.support ? ' · поддержка напарника' : ''}</div>${itemList(x.sp.slice().sort((a, b) => a.t - b.t).slice(0, 5))}${start}</div>`;
+    }).join('')}</div>`;
+  } else {
+    m.hidden = true;
+  }
+}
+
+function buildText(s) {
+  const d = describe(s);
+  const hand = (k) => k ? `${W[k].ru} (${W[k].en}): ${examples(k, s, k === s.right).map(e => e.n).join(', ')}` : '—';
+  const lines = [
+    `${d.name}${d.aka ? ` aka «${d.aka}»` : ''} — сид ${seedVal()}, ${['лёгкий', 'средний', 'сложный', 'эксперт'][diff]}`,
+    d.tag,
+    `Стартовый класс: ${s.start.n}`,
+    `Пассивки:`, ...s.passives.map(p => `  • ${p.t}`),
+    `Правая: ${hand(s.right)}`,
+    `Левая: ${s.left.cls ? hand(s.left.cls) : s.left.mode === 'twohand' ? 'пусто, двуручный хват' : 'свободна'}`,
+  ];
+  if (s.schools.length) lines.push(`Магия: ${s.schools.map(k => SCHOOLS[k].ru).join(', ')}`);
+  return lines.join('\n');
+}
+
+// ===== Состояние интерфейса =====
+let diff = 1;
+const seedVal = () => $('seed').value.trim().toUpperCase();
+function newSeed() { let x = ''; const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; for (let i = 0; i < 6; i++) x += a[Math.floor(Math.random() * a.length)]; return x; }
+function setDiff(d) {
+  diff = d;
+  document.querySelectorAll('#diff button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.d === d)));
+  $('rule').textContent = DIFF[d].rule;
+}
+function run() {
+  const seed = seedVal() || newSeed();
+  $('seed').value = seed;
+  const s = generate(seed, diff, $('coop').checked);
+  if (s) render(s);
+  try { history.replaceState(null, '', '#' + seed + '-' + diff + ($('coop').checked ? 'c' : 's')); } catch (e) {}
+}
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 1600); }
+
+document.querySelectorAll('#diff button').forEach(b => b.addEventListener('click', () => { setDiff(+b.dataset.d); run(); }));
+$('coop').addEventListener('change', run);
+$('seedForm').addEventListener('submit', e => { e.preventDefault(); run(); });
+$('roll').addEventListener('click', () => {
+  const b = $('roll'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
+  $('seed').value = newSeed(); run();
+});
+$('copy').addEventListener('click', () => {
+  if (!current) return;
+  const text = buildText(current);
+  navigator.clipboard.writeText(text).then(() => toast('Билд скопирован'), () => toast('Не удалось скопировать — выделите текст вручную'));
+});
+
+// Старт: сид из адреса, если есть
+const m = /^#([A-Z0-9]{1,10})-([0-3])([cs])$/i.exec(location.hash || '');
+if (m) { $('seed').value = m[1].toUpperCase(); setDiff(+m[2]); $('coop').checked = m[3].toLowerCase() === 'c'; }
+else setDiff(1);
+run();
+</script>
